@@ -84,11 +84,7 @@ endif
 
 " Note if the SortPkgSep is set, then you need to remove the empty lines.
 if !exists("g:JavaImpSortPkgSep")
-    if (g:JavaImpSortRemoveEmpty == 1)
-        let g:JavaImpSortPkgSep = 2
-    else
-        let g:JavaImpSortPkgSep = 0
-    endif
+    let g:JavaImpSortPkgSep = 0
 endif
 
 if !exists("g:JavaImpPathSep")
@@ -113,6 +109,9 @@ function! <SID>JavaImpGenerate()
         update
     endif
     cclose
+    if (bufexists(g:JavaImpClassList))
+        silent exe "bwipeout! ".g:JavaImpClassList
+    endif
     "Recursivly go through the directory and write to the temporary file.
     let impfile = tempname()
     " Save the current buffer number
@@ -126,29 +125,13 @@ function! <SID>JavaImpGenerate()
     endif
 
     while (currPaths != "" && currPaths !~ '^ *' . g:JavaImpPathSep . '$')
-        " Cut off the first path from the delimeted list of paths to examine.
-        let sepIdx = stridx(currPaths, g:JavaImpPathSep)
-        let currPath = strpart(currPaths, 0, sepIdx)
+        " Cut off the first path from the delimited list of paths to examine.
+        let sepIndex = stridx(currPaths, g:JavaImpPathSep)
+        let currPath = strpart(currPaths, 0, sepIndex)
+        let currPaths = strpart(currPaths, sepIndex + 1, strlen(currPaths) - sepIndex - 1)
 
-        " Uncertain what this is doing.
-        " currPath is the same before and after.
-        let pkgDepth = substitute(currPath, '^.*{\(\d\+\)}.*$', '\1', '')
-        let currPath = substitute(currPath, '^\(.*\){.*}.*', '\1', '')
-
-        let headStr = ""
-        while (pkgDepth != 0)
-            let headStr = headStr . ":h"
-            let pkgDepth = pkgDepth - 1
-        endwhile
-
-        let pathPrefix = fnamemodify(currPath, headStr)
-        let currPkg = strpart(currPath, strlen(pathPrefix) + 1)
-
-        echo "Searching in path (package): " . currPath . ' (' . currPkg .  ')'
-        "echo "currPaths: ".currPaths
-        let currPaths = strpart(currPaths, sepIdx + 1, strlen(currPaths) - sepIdx - 1)
-        "echo "(".currPaths.")"
-        call <SID>JavaImpAppendClass(currPath, currPkg)
+        echo "Searching in path: " . currPath
+        call <SID>JavaImpAppendClass(currPath)
     endwhile
 
     "silent exe "write! /tmp/raw"
@@ -157,66 +140,35 @@ function! <SID>JavaImpGenerate()
     " Formatting the file
     "echo "Formatting the file..."
     1,$call <SID>JavaImpFormatList()
-    "silent exe "write! /tmp/raw_formatted"
 
     " Sorting the file
-    echo "Sorting the classes"
-    %sort
-    "silent exe "write! /tmp/raw_sorted"
+    %sort u
 
-    echo "Assuring uniqueness..."
-    1,$call <SID>CheesyUniqueness()
-    let uniqueClassCount = line("$") - 1
-    "silent exe "write! /tmp/raw_unique"
-
-    " before we write to g:JavaImpClassList, close g:JavaImpClassList
-    " exe "bwipeout ".g:JavaImpClassList (we do this because a user might
-    " want to do a JavaImpGenerate after having been dissapointed that
-    " his JavaImpInsert missed something...
-    if (bufexists(g:JavaImpClassList))
-        silent exe "bwipeout! " g:JavaImpClassList
-    endif
-
-    silent exe "write!" g:JavaImpClassList
-    close
-    " Delete the temporary file
-    silent exe "bwipeout! " impfile
+    silent exe "write! ".g:JavaImpClassList
+    silent exe "bwipeout! ".impfile
     call delete(impfile)
-    echo "Done.  Found " . classCount . " classes (". uniqueClassCount. " unique)"
+    echo "Done.  Found " . classCount . " classes"
 endfunction
 
 " The helper function to append a class entry in the class list
-function! <SID>JavaImpAppendClass(cpath, relativeTo)
-    " echo "Arguments " . a:cpath . " package is " . a:relativeTo
+function! <SID>JavaImpAppendClass(cpath)
+    echo "Loading file/directory " . a:cpath
     if strlen(a:cpath) < 1
         echo "Alert! Bug in JavaApppendClass (JavaImp.vim)"
-        echo " - null cpath relativeTo ".a:relativeTo
         echo "(beats me... hack the source and figure it out)"
         " Base case... infinite loop protection
         return 0
     elseif (!isdirectory(a:cpath) && match(a:cpath, '\(\.class$\|\.java$\)') > -1)
         " oh good, we see a single entry like org/apache/xerces/bubba.java
         " just slap it on our tmp buffer
-        if (a:relativeTo == "")
-            call append(0, a:cpath)
-        else
-            call append(0, a:relativeTo)
-        endif
+        call append(0, a:relativeTo)
     elseif (isdirectory(a:cpath))
         " Recursively fetch all Java files from the provided directory path.
-        let l:javaList = glob(a:cpath . "/**/*.java", 1, 1)
-        let l:clssList = glob(a:cpath . "/**/*.class", 1, 1)
-        let l:list = l:javaList + l:clssList
-
-        " Include a trailing slash so that we don't leave a slash at the
-        " beginning of the fully qualified classname.
-        let l:cpath = a:cpath . "/"
-
-        " Add each matching file to the class index buffer.
-        " The format of each entry will be akin to: org/apache/xerces/Bubba
+        let l:list = glob(a:cpath . "/*", 1, 1)
         for l:filename in l:list
-            let l:filename = substitute(l:filename, l:cpath, "", "g")
-            call append(0, l:filename)
+            if isdirectory(l:filename) || match(l:filename, '\v(\.class|.java|.jar)$') > -1
+                call <SID>JavaImpAppendClass(l:filename)
+            endif
         endfor
 
     elseif (match(a:cpath, '\(\.jar$\)') > -1)
@@ -282,7 +234,7 @@ endfunction
 " For example:
 "  /javax/swing/JPanel.java
 "  becomes:
-"  JPanel javax.swing
+"  JPanel javax.swing.Jpanel
 " If the current line does not appear to contain a java|class file,
 " we blank it out (this is useful for non-bytecode entries in the
 " jar files, like gif files or META-INF)
@@ -298,18 +250,19 @@ function! <SID>JavaImpFormatList()
     " in other words, if you hand /javax/swing/JPanel.java, it would
     " return in JPanel (as regexp var \1)
     let l:classExtensions = '\(\.class\|\.java\)'
-    let l:matchClassName = match(l:currentLine, '[\\/]\([\$0-9A-Za-z_]*\)'.classExtensions.'$')
+    let l:matchClassName = match(l:currentLine, '[\\/]\([\$A-Za-z_]*\)'.classExtensions.'$')
     if l:matchClassName > -1
         let l:matchClassName = l:matchClassName + 1
         let l:className = strpart(l:currentLine, l:matchClassName)
         let l:className = substitute(l:className,  l:classExtensions, '', '')
 
-        " TODO: It'd be better if we could handle the importing of inner
-        " classes.
-        "
-        " subst '$' -> '.' for classes defined inside other classes
-        " don't know if it will do anything useful, but at least it
-        " will be less incorrect than it was before
+        " Inner classes are separated by a dollar sign from their containing class.
+        " Anonymous inner class names are numbers. For example, Stream.Builder is
+        " java.util.stream.Stream$Builder, but if there were any anonymous inner classes
+        " used in that declaration they would appear as java.util.stream.Stream$1, etc.
+        " You cannot import an anonymous inner class as such, so we skip those lines by
+        " not including [0-9] in the l:matchClassName regex above.
+
         let l:className = substitute(l:className, '\$', '.', 'g')
         call setline(".", l:className." ".l:packageName.".".l:className)
     else
@@ -1023,35 +976,6 @@ function! <SID>JavaImpGotoFirstMatchingImport(pattern, flags)
     endif
     let pattern = l:pattern . '.*;'
     return (search(l:pattern, a:flags) > 0)
-endfunction
-
-" -------------------------------------------------------------------
-" (Helpers) Miscellaneous
-" -------------------------------------------------------------------
-
-" Removes all duplicate entries from a sorted buffer
-" preserves the order of the buffer and runs in o(n) time
-function! <SID>CheesyUniqueness() range
-    let l:storedStr = getline(1)
-    let l:currentLine = 2
-    let l:lastLine = a:lastline
-    "echo "starting with l:storedStr ".l:storedStr.", l:currentLine ".l:currentLine.", l:lastLine".lastLine
-    while l:currentLine < l:lastLine
-        let l:currentStr = getline(l:currentLine)
-        if l:currentStr == l:storedStr
-            "echo "deleting line ".l:currentLine
-            exe l:currentLine."delete"
-            " note that we do NOT advance the currentLine counter here
-            " because where currentLine is is what was once the next
-            " line, but what we do have to do is to decrement what we
-            " treat as the last line
-            let l:lastLine = l:lastLine - 1
-        else
-            let l:storedStr = l:currentStr
-            let l:currentLine = l:currentLine + 1
-            "echo "set new stored Str to ".l:storedStr
-        endif
-    endwhile
 endfunction
 
 " -------------------------------------------------------------------
