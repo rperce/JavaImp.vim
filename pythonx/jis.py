@@ -211,7 +211,8 @@ class Sorter:
 
     def _deleteRange(self, start, end):
         # Remove Existing Imports from the Buffer.
-        del vim.current.buffer[start:end]
+        # inclusive : exclusive
+        del vim.current.buffer[start:end + 1]
 
     # Insert a list of lines into the buffer at the provided start line.
     def _insertListAtLine(self, startLine, lineList):
@@ -245,6 +246,6 @@ class Sorter:
         startLine = self._insertListAtLine(startLine, spacedList)
 
         # Insert a newline at the end.
-        startLine = self._insertListAtLine(startLine, [""])
+        #startLine = self._insertListAtLine(startLine, [""])
 
 sorter = Sorter()
