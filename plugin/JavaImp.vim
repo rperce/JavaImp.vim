@@ -279,8 +279,7 @@ endfunction
 " Inserts the import statement of the class specified under the cursor in the
 " current .java file.
 "
-" If there is a duplicated entry for the classname, it'll insert the entry as
-" comments (starting with "//")
+" If there is a duplicated entry for the classname, it won't insert it.
 "
 " If the entry already exists (specified in an import statement in the current
 " file), this will do nothing.
@@ -302,9 +301,9 @@ function! <SID>JavaImpInsert(verboseMode)
 
     " Write the current buffer first (if we have to).  Note that we only want
     " to do this if the current buffer is named.
-    if expand("%") != ''
-        exec verbosity "update"
-    endif
+    " if expand("%") != ''
+    "     exec verbosity "update"
+    " endif
 
     " choose the current word for the class
     let className = expand("<cword>")
@@ -338,8 +337,8 @@ function! <SID>JavaImpInsert(verboseMode)
             let hasPackage = <SID>JavaImpGotoPackage()
             if (hasPackage == 1)
                 let pkgLoc = line('.')
-                let pkgPat = '^\s*package\s\+\(\%(\w\+\.\)*\w\+\)\s*;.*$'
-                let pkg = substitute(getline(pkgLoc), pkgPat, '\1', '')
+                let pattern= '\v^\s*package\s+((\w\+\.)*\w+)\s*;.*$'
+                let pkg = substitute(getline(pkgLoc), pattern, '\1', '')
 
                 " Check to see if the class is in this package, we won't
                 " need an import.
