@@ -2,7 +2,7 @@ import vim
 import re
 
 class Sorter:
-    IMPORT_BEGIN = "^\s*import\s+" 
+    IMPORT_BEGIN = "^\s*import\s+"
 
     def __init__(self):
         # Initialize lists
@@ -117,9 +117,9 @@ class Sorter:
     def _extractImports(self):
         self._rangeStart = -1
         self._rangeEnd = -1
-        
+
         importStatements = list()
-        
+
         # Compile the Regex to Match Middle Import Statements.
         regexBeginningOfImportStatment = re.compile(self.IMPORT_BEGIN)
 
@@ -130,14 +130,14 @@ class Sorter:
                 # Indicate the Start of the Import Statement Range if not yet set.
                 if self._rangeStart == -1:
                     self._rangeStart = lineNum
-        
+
                 lastMatch = lineNum
                 # Add the matching import to the list.
                 importStatements.append(line)
 
         # Indicate the End of the Import Statement Range.
         self._rangeEnd = lastMatch
-        
+
         return importStatements
 
     # Return a list of matching imports given a list of import statements and a
@@ -211,7 +211,7 @@ class Sorter:
 
     def _deleteRange(self, start, end):
         # Remove Existing Imports from the Buffer.
-        del vim.current.buffer[start:end + 2]
+        del vim.current.buffer[start:end]
 
     # Insert a list of lines into the buffer at the provided start line.
     def _insertListAtLine(self, startLine, lineList):
@@ -240,7 +240,7 @@ class Sorter:
         # Insert Spacing into Middle Import List.
         spacedList  = self._insertSpacing(fullySortedImportStatements, self._depth)
 
-        startLine = self._rangeStart - 1
+        startLine = self._rangeStart
 
         startLine = self._insertListAtLine(startLine, spacedList)
 
