@@ -160,10 +160,22 @@ endfunction
 " Go to the last import statement that it can find.  Returns 1 if an import is
 " found, returns 0 if not.
 function! JavaImp#imports#LastImportLine() abort
-    return <SID>JavaImpGotoFirstMatchingImport('', 'b')
+    return JavaImp#imports#FindFirstMatchingImport('', 'b')
 endfunction
 
-function! Java#imports#GotoPackage() abort
+function! JavaImp#imports#FindFirstMatchingImport(pattern, flags) abort
+    " vint: -ProhibitCommandRelyOnUser
+    normal G$
+    " vint: +ProhibitCommandRelyOnUser
+    let l:pattern = '^\s*import\s\s*'
+    if a:pattern !=# ''
+        let l:pattern = l:pattern . a:pattern
+    endif
+    let l:pattern = l:pattern . '.*;'
+    return (search(l:pattern, a:flags) > 0)
+endfunction
+
+function! JavaImp#imports#GotoPackage() abort
     " First search for the className in an import statement
     " vint: -ProhibitCommandRelyOnUser
     normal G$

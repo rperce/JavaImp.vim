@@ -19,4 +19,5 @@ command! -nargs=? JIFS             call JavaImp#source#ViewSource(0)
 command! -nargs=? JavaImpFileSplit call JavaImp#source#ViewSource(0)
 
 call JavaImp#Setup()
+let g:JavaImpPluginHome = fnamemodify(resolve(expand('<sfile>:p')), ':h:h')
 
