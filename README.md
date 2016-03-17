@@ -1,7 +1,7 @@
 JavaImp.vim
 -----------
 Short and sweet:  JavaImp generates and sorts your import statements so that
-you don't have to.  It is also able to display JavaDoc HTML in a web browser of
+you don't have to. It is also able to display JavaDoc HTML in a web browser of
 your choice.
 
 Features
@@ -16,37 +16,49 @@ Features
 Requirements
 ------------
 - Vim 7+ (with Python support) or Neovim 0.1.0+.
-- The 'jar' binary must be your path.
-- A web browser such as Chrome or Firefox or a pager such as w3m or lynx.
+- `jar` must be in your `$PATH`.
+- A web browser, either graphical (Chromium, Firefox, etc.) or console (w3m, lynx, etc.)
+  if you want to view JavaDocs.
 
 Installation
 ------------
-You can use any standard vim package manager (vim-plug, Vundle, Pathogen, etc.) in the
-usual way
+You can use any standard vim package manager
+([vim-plug](https://github.com/junegunn/vim-plug),
+[Vundle](https://github.com/VundleVim/Vundle.vim),
+[Pathogen](https://github.com/tpope/vim-pathogen), etc.) in the
+usual way. I like vim-plug.
 
-You need to set two global variables in your .vimrc in order for this to work:
+You need to set two global variables in your `.vimrc` or `init.vim` (neovim) in order for
+this to work:
 
-1. Paths to Java Project Source files.
+1. Paths to java classes to be loaded. For example,
 
         let g:JavaImpPaths =
            \ $HOME . "/project/src/java," .
            \ $HOME . "/project2/javasrc," .
            \ $HOME . "/project3/javasrc"
 
-   The g:JavaImpPaths is a comma separated list of paths that point to the
-   roots of the 'com' or 'org' etc.  You can list your Java projects, external
-   projects or even Java's source classes.  It is recommended that you do this
-   so that you can take full advantage of automatic import statement
-   generation.
+   Each entry can be a directory or any one of a `.java`, `.class`, or `.jar` file. If the
+   entry is a directory, it will be recursed into and each sub-directory or appropriate
+   file loaded as well. `.java` and `.class` files are loaded directly; `.jar` files have
+   their contained classes listed with `jar ft <jarname>` and all such classes are added
+   to the list of known paths. Note the terminal `','` character.
 
-   If ',' is not convenient for you, set g:JavaImpPathSep to the
-   (single-character) separator you would like to use:
+   If `','` is not convenient for you, set `g:JavaImpPathSep` to the single-character
+   separator you would like to use, e.g.
 
         let g:JavaImpPathSep = ':'
 
-2. Path to JavaImp's temporary storage.  The default is:
+2. Path to JavaImp's storage. The default is:
 
-        let g:JavaImpDataDir = $HOME . "/vim/JavaImp"
+        let g:JavaImpDataDir = $HOME . "/.vim/JavaImp"
+
+   (unless `has('nvim')` is true, in which case it's)
+
+        let g:JavaImpDataDir = $HOME . "/.config/nvim/JavaImp"
+
+   The `cache` subdirectory will contained cached `.jar` contents; the `JavaImp.txt` file
+   in that directory contains a full dictionary list of every class `JavaImp` knows about.
 
 Commands
 ========
@@ -55,19 +67,17 @@ Generate a cache of classes for import:
     :JavaImpGenerate or :JIG
 
 If you have not created the directory for g:JavaImpDataDir yet, this will
-create the appropriate paths.  JIG will go through your JavaImpPaths and search
-for anything that ends with .java, .class, or .jar.  It'll then write the
+create the appropriate paths. JIG will go through your JavaImpPaths and search
+for anything that ends with .java, .class, or .jar. It'll then write the
 mappings to the JavaImp.txt and/or the cache files.
 
-After you've generated your JavaImp.txt file, move your cursor to a class name
-in a Java file and do a:
+Once your class-cache is ready, while your cursor is in or after a class name,
 
     :JavaImp or :JavaImpSilent or :JI
 
-And the magic happens!  You'll realize that you have an extra import statement
-inserted after the last import statement in the file.  It'll also prompts you
-with duplicate class names and insert what you have selected.  If the class
-name is already imported, it'll do nothing.
+inserts the relevant import after the last import statement in the file.
+If necessary, you'll be prompted with duplicate class names and insert what you have
+selected. If the class is already imported, it'll do nothing.
 
 You can also sort the import statements in the file by doing:
 
@@ -84,47 +94,42 @@ Doing a :JavaImpFileSplit or :JIFS will open a split window on the file.
 
 JavaDoc Viewing
 ---------------
-If you want to use the JavaDoc viewing feature for JavaImp, you should set
-g:JavaImpDocPaths.  Similar to how you set the g:JavaImpPaths,
+If you want to use the JavaDoc viewing feature for JavaImp, you need to set
+`g:JavaImpDocPaths`. Similar to how you set the `g:JavaImpPaths`,
 g:JavaImpDocPaths contains a list of root level directories that contains your
-java docs.  This, together with a HTML pager (like w3m or lynx on Unix), let
-you view the JavaDocs very quickly by just hitting :JID on a class name.  For
-example, you can set:
+java docs.
 
-    let g:JavaImpDocPaths = "/usr/java/docs/api," .
+    let g:JavaImpDocPaths =
+       \ "/usr/java/docs/api," .
        \ "/project/docs/api"
 
 The default pager is set to:
 
     let g:JavaImpDocViewer = "w3m"
 
-On windows, you can put iexplore.exe or mozilla.exe in your path and set the
-g:JavaImpDocViewer to "iexplore.exe" or "mozilla.exe".
+On Windows, you can put, e.g., `iexplore.exe` or `chrome.exe` in your path and set
+`g:JavaImpDocViewer` to that browser.
 
-Once your paths are set correctly, with your cursor on a classname execute
+Once your paths are set correctly, with your cursor on a classname, execute
 
     :JavaImpDoc or :JID
-
-JavaImp will open the viewer to the class based on the import list that you've generated
-by `:JIG`.
 
 Import Statement Order
 ----------------------
 JavaImp will order your import statements into groups:
-* Statics Imports (if configured to come first)
+* Static Imports (if configured to come first)
 * Top Imports
 * Middle Imports
 * Bottom Imports
-* Statics Imports (if configured to come last)
+* Static Imports (if configured to come last)
 
-Static import statements may come first or last.  The default is to place them
-above the regular imports.  You can override this by setting:
+Static import statements may come first or last. The default is to place them
+above the regular imports. You can override this by setting:
 
     let g:JavaImpStaticImportsFirst = 0
 
-Top import statements come next.  These are normal import statements which
-match a prioritized list of regular expressions.  JavaImp uses similar setting
-to Eclipse Mars by default:
+Top import statements come next. These are non-static imports that match a prioritized
+list of regular expressions. JavaImp uses similar setting to Eclipse by default:
 
     let g:JavaImpTopImports = [
         \ 'java\..*',
@@ -133,18 +138,16 @@ to Eclipse Mars by default:
         \ 'com\..*'
         \ ]
 
-Next come the Middle Imports Statements.  These are any import statements which
-are not static and do not match the top nor bottom import statement regular
-expressions.
+Middle imports are those import statements which are not static and match neither the top
+nor bottom regexp lists.
 
-Bottom Import Statements appear below the Middle Import Statements.  These
-statements will match a configured list of regular expressions.  By default,
-this list is empty:
+Bottom imports appear below the middle imports, unsurprisingly. These imports, like those
+at the top, match a list of regexps. However, by default, this list is empty:
 
     let g:JavaImpBottomImports = []
 
-JavaImp has the option to insert a blank line between package groups whose roots differ by
-a specified amount via `g:JavaImpSortPkgSep`. For example, if `g:JavaImpSortPkgSep = 2`,
+If you wish, you may insert a blank line between package groups whose roots differ by a
+specified amount via `g:JavaImpSortPkgSep`. For example, if `g:JavaImpSortPkgSep = 2`,
 
     import java.util.List;
     import org.apache.tools.zip.ZipEntry;
@@ -167,24 +170,33 @@ will become:
     import org.apache.tools.ant.types.ZipFileSet;
     import org.apache.tools.zip.ZipEntry;
 
-Note that adjacent imports have identical roots to two levels. The default depth is `0`.
+Note that adjacent imports have identical roots to two levels. The default depth is `0`,
+i.e., no extra spacing.
 
 Extras
 ------
 After you have generated the `JavaImp.txt` file by using `:JIG`, you can use it as
-your dictionary for autocompletion.  For example, you can put the following in
-your `java.vim` ftplugin (note here `g:JavaImpDataDir` is set before running this):
+your dictionary for autocompletion. For example, you can put the following in
+your `ftplugin/java.vim`:
 
     exec "setlocal dict=" . g:JavaImpDataDir . "/JavaImp.txt"
-    setlocal complete-=k
+    setlocal complete-=k " ensure only one 'k' entry ("autocomplete from dict")
     setlocal complete+=k
 
-After you have done so, you can open a `.java` file and use `^P` and `^N` to
-autocomplete your Java class names.
+After you have done so, you can open a `.java` file and use your completion-cycling binds
+(`<C-P>` and `<C-N>` by default) to autocomplete your Java class names.
+
+To be able to insert import statements for classes as you type, add the following to your
+`vimrc` or `ftplugin/java.com`:
+
+    inoremap <C-I> <ESC>:JavaImpSilent<Enter>a
+
+By default `<C-I>` acts identically to pressing the `<Tab>` key, which is less that
+useful. It's much nicer for *i*mports.
 
 Importing your JDK Classes
 --------------------------
-Simply include `$JAVA_HOME/lib` in your `g:JavaImpPaths`.
+Simply include `$JAVA_HOME/jre/lib/rt.jar` in your `g:JavaImpPaths`.
 
 History
 -------

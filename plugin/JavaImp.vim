@@ -39,7 +39,11 @@ else
 endif
 
 if !exists("g:JavaImpDataDir")
-    let g:JavaImpDataDir = expand("$HOME") . s:SL . "vim" . s:SL . "JavaImp"
+    if has('nvim')
+        let g:JavaImpDataDir = expand("$HOME") . s:SL . ".config" . s:SL . "nvim" . s:SL . "JavaImp"
+    else
+        let g:JavaImpDataDir = expand("$HOME") . s:SL . "vim" . s:SL . "JavaImp"
+    endif
 endif
 
 if !exists("g:JavaImpClassList")
